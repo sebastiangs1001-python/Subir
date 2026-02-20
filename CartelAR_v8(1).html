@@ -1,0 +1,1286 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>CartelAR</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@700;800&display=swap');
+    *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
+    body { overflow:hidden; background:#07070f; font-family:'DM Mono',monospace; color:#ccc; }
+
+    #c3d { position:fixed; inset:0; }
+    #c2d { position:fixed; inset:0; pointer-events:none; z-index:30; }
+
+    #panel {
+      position:fixed; top:0; left:0; width:280px; height:100vh;
+      background:rgba(6,6,16,.97);
+      border-right:1px solid rgba(255,255,255,.06);
+      padding:18px 15px 15px;
+      display:flex; flex-direction:column; gap:11px;
+      z-index:50; overflow-y:auto;
+    }
+    #panel::-webkit-scrollbar{width:3px;}
+    #panel::-webkit-scrollbar-thumb{background:#222;border-radius:3px;}
+
+    .brand{
+      font-family:'Syne',sans-serif; font-size:17px; font-weight:800; color:#fff;
+      padding-bottom:13px; border-bottom:1px solid rgba(255,255,255,.07); flex-shrink:0;
+    }
+    .brand em{color:#00e5ff;font-style:normal;}
+    .tag{
+      font-size:8.5px;letter-spacing:2px;text-transform:uppercase;color:#00e5ff;
+      display:flex;align-items:center;gap:6px;
+    }
+    .tag::before{content:'';width:4px;height:4px;border-radius:50%;background:#00e5ff;box-shadow:0 0 5px #00e5ff;flex-shrink:0;}
+    .ttl{font-family:'Syne',sans-serif;font-size:12.5px;font-weight:700;color:#fff;margin-top:3px;}
+    .dsc{font-size:9.5px;color:#444;line-height:1.65;}
+    hr{border:none;border-top:1px solid rgba(255,255,255,.05);}
+
+    .btn{
+      width:100%;padding:9px 12px;border:none;border-radius:7px;cursor:pointer;
+      font-family:'DM Mono',monospace;font-size:11px;font-weight:500;
+      display:flex;align-items:center;justify-content:center;gap:6px;transition:.12s;
+    }
+    .btn-p{background:#00e5ff;color:#000;}
+    .btn-p:hover{filter:brightness(1.1);transform:translateY(-1px);}
+    .btn-g{background:rgba(255,255,255,.05);color:#888;border:1px solid rgba(255,255,255,.09);}
+    .btn-g:hover{background:rgba(255,255,255,.09);color:#ccc;}
+    .btn-r{background:rgba(255,60,60,.1);color:#f66;border:1px solid rgba(255,60,60,.2);}
+
+    .sz-grid{display:flex;flex-direction:column;gap:6px;}
+    .sz-opt{
+      border:1px solid rgba(255,255,255,.08);border-radius:7px;padding:9px 10px;
+      cursor:pointer;display:flex;align-items:center;gap:9px;transition:.12s;user-select:none;
+    }
+    .sz-opt:hover{border-color:rgba(0,229,255,.3);}
+    .sz-opt.on{border-color:#00e5ff;background:rgba(0,229,255,.05);}
+    .sz-thumb{flex-shrink:0;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);border-radius:2px;}
+    .sz-name{font-size:11px;font-weight:500;color:#ccc;}
+    .sz-cm{font-size:9.5px;color:#444;margin-top:1px;}
+    .sz-dot{width:6px;height:6px;border-radius:50%;border:1.5px solid #333;flex-shrink:0;transition:.12s;margin-left:auto;}
+    .sz-opt.on .sz-dot{background:#00e5ff;border-color:#00e5ff;box-shadow:0 0 6px #00e5ff;}
+
+    .pt-grid{display:grid;grid-template-columns:1fr 1fr;gap:5px;}
+    .pt-row{font-size:9.5px;color:#444;display:flex;align-items:center;gap:5px;}
+    .pt-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
+
+    .upzone{
+      border:1.5px dashed rgba(255,255,255,.12);border-radius:8px;padding:16px 10px;
+      text-align:center;cursor:pointer;transition:.15s;user-select:none;
+    }
+    .upzone:hover{border-color:#00e5ff66;background:rgba(0,229,255,.03);}
+    .upzone .ico{font-size:22px;display:block;margin-bottom:5px;}
+    .upzone .lbl{font-size:9.5px;color:#555;}
+    .upzone.ok{border-color:#00e5ff88;background:rgba(0,229,255,.05);}
+    .upzone.ok .lbl{color:#00e5ffcc;}
+
+    .sl-row{display:flex;flex-direction:column;gap:4px;}
+    .sl-lbl{font-size:9.5px;color:#444;display:flex;justify-content:space-between;}
+    .sl-lbl b{color:#888;font-weight:400;}
+    .sl-row input[type=range]{width:100%;height:3px;accent-color:#00e5ff;cursor:pointer;}
+
+    .gz-bar{display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px;}
+    .gz-btn{
+      padding:7px 2px;border:1px solid rgba(255,255,255,.08);border-radius:6px;
+      background:rgba(255,255,255,.02);cursor:pointer;
+      font-family:'DM Mono',monospace;font-size:9.5px;color:#555;text-align:center;transition:.12s;
+    }
+    .gz-btn:hover{color:#aaa;border-color:rgba(0,229,255,.3);}
+    .gz-btn.on{border-color:#00e5ff;color:#00e5ff;background:rgba(0,229,255,.07);}
+
+    .mk{
+      position:fixed;width:18px;height:18px;border-radius:50%;
+      border:2px solid rgba(255,255,255,.85);transform:translate(-50%,-50%);
+      cursor:grab;z-index:41;
+      box-shadow:0 0 0 3px rgba(0,0,0,.5),0 2px 8px rgba(0,0,0,.9);
+      touch-action:none;
+    }
+    .mk:active{cursor:grabbing;transform:translate(-50%,-50%) scale(1.3);}
+    .mk .l{
+      position:absolute;top:-17px;left:50%;transform:translateX(-50%);
+      font:500 8px/1 'DM Mono',monospace;letter-spacing:1px;
+      color:rgba(255,255,255,.55);white-space:nowrap;pointer-events:none;
+    }
+    #m0{background:#ff3355;} #m1{background:#3377ff;}
+    #m2{background:#33ffaa;} #m3{background:#ffcc33;}
+
+    #modetag{
+      position:fixed;top:14px;right:14px;z-index:60;
+      background:rgba(0,0,0,.6);border:1px solid rgba(255,255,255,.08);
+      padding:5px 11px;border-radius:20px;font-size:9.5px;color:#666;
+    }
+    #modetag b{color:#00e5ff;}
+    .hidden{display:none!important;}
+    .spacer{flex:1;min-height:8px;}
+    .foot{font-size:9px;color:#1a1a28;text-align:center;}
+  </style>
+
+  <script type="importmap">
+  {"imports":{
+    "three":"https://unpkg.com/three@0.160.0/build/three.module.js",
+    "three/addons/":"https://unpkg.com/three@0.160.0/examples/jsm/"
+  }}</script>
+</head>
+<body>
+
+<div id="errBox" style="display:none;position:fixed;top:10px;left:50%;transform:translateX(-50%);z-index:9999;background:#ff3355;color:#fff;padding:10px 16px;border-radius:8px;font-size:12px;max-width:80%;word-break:break-all;"></div>
+<div id="m0" class="mk hidden"><span class="l">TL</span></div>
+<div id="m1" class="mk hidden"><span class="l">TR</span></div>
+<div id="m2" class="mk hidden"><span class="l">BR</span></div>
+<div id="m3" class="mk hidden"><span class="l">BL</span></div>
+
+<canvas id="c2d"></canvas>
+<div id="c3d"></div>
+<div id="modetag">Modo: <b id="modetxt">Cargando Three.js...</b></div>
+
+<div id="panel">
+  <div class="brand">Cartel<em>AR</em></div>
+
+  <!-- S1 -->
+  <div id="s1">
+    <div class="tag">Paso 01</div>
+    <p class="ttl" style="margin:4px 0 6px">Foto de la fachada</p>
+    <p class="dsc" style="margin-bottom:11px">Sube la imagen de la pared donde irá el cartel.</p>
+    <button class="btn btn-p" onclick="openFile('inBg')">📁 Subir foto</button>
+  </div>
+
+  <!-- S2 -->
+  <div id="s2" class="hidden">
+    <div class="tag">Paso 02</div>
+    <p class="ttl" style="margin:4px 0 8px">Formato del cartel</p>
+    <div class="sz-grid">
+      <div class="sz-opt on" id="optSq" onclick="pickFmt('sq')">
+        <div class="sz-thumb" style="width:30px;height:30px"></div>
+        <div><div class="sz-name">Cuadrado</div><div class="sz-cm">80 × 80 cm</div></div>
+        <div class="sz-dot"></div>
+      </div>
+      <div class="sz-opt" id="optWd" onclick="pickFmt('wd')">
+        <div class="sz-thumb" style="width:48px;height:13px"></div>
+        <div><div class="sz-name">Panorámico</div><div class="sz-cm">220 × 60 cm</div></div>
+        <div class="sz-dot"></div>
+      </div>
+    </div>
+    <hr style="margin:10px 0">
+    <div class="tag">Paso 03</div>
+    <p class="ttl" style="margin:4px 0 5px">Define la perspectiva</p>
+    <p class="dsc" style="margin-bottom:9px">Arrastra los 4 puntos a las esquinas del espacio. Las guías muestran los puntos de fuga detectados en tiempo real.</p>
+    <div class="pt-grid" style="margin-bottom:9px">
+      <div class="pt-row"><span class="pt-dot" style="background:#ff3355"></span>Sup-izquierda</div>
+      <div class="pt-row"><span class="pt-dot" style="background:#3377ff"></span>Sup-derecha</div>
+      <div class="pt-row"><span class="pt-dot" style="background:#33ffaa"></span>Inf-derecha</div>
+      <div class="pt-row"><span class="pt-dot" style="background:#ffcc33"></span>Inf-izquierda</div>
+    </div>
+    <div style="display:flex;gap:5px;margin-bottom:5px">
+      <button class="btn btn-g" style="flex:1;font-size:10px" id="btnSnap" onclick="snapToPerspective()">⊕ Ajustar VP</button>
+      <button class="btn btn-g" style="flex:1;font-size:10px" id="btnReset4" onclick="resetMarkers()">↺ Reset</button>
+    </div>
+    <div id="vpStatus" style="font-size:9px;color:#444;text-align:center;min-height:14px;margin-bottom:6px"></div>
+    <button class="btn btn-p" id="btnGen">✅ Generar cartel 3D</button>
+  </div>
+
+  <!-- S3 -->
+  <div id="s3" class="hidden">
+
+    <div class="tag">Modelo 3D</div>
+    <!-- Toggle: cubo estándar vs modelo GLB -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:4px">
+      <div class="sz-opt" id="optCube" onclick="setSignMode('cube')" style="justify-content:center;padding:8px 6px">
+        <div style="text-align:center">
+          <div style="font-size:16px">⬛</div>
+          <div class="sz-name" style="font-size:10px;margin-top:2px">Cubo</div>
+        </div>
+      </div>
+      <div class="sz-opt on" id="optGlb" onclick="setSignMode('glb')" style="justify-content:center;padding:8px 6px">
+        <div style="text-align:center">
+          <div style="font-size:16px">🏪</div>
+          <div class="sz-name" style="font-size:10px;margin-top:2px">Cartel 3D</div>
+        </div>
+      </div>
+    </div>
+    <div id="modelStatus" style="font-size:9px;color:#00e5ffaa;text-align:center;min-height:12px"></div>
+
+    <hr>
+    <div class="tag">Logo / Imagen</div>
+    <div class="upzone" id="logoZone" onclick="openFile('inLogo')">
+      <span class="ico">🖼️</span>
+      <span class="lbl" id="logoLbl">Clic para subir logo</span>
+    </div>
+
+    <hr>
+    <div class="tag">Grosor</div>
+    <div class="sl-row">
+      <div class="sl-lbl">Profundidad del cartel <b><span id="vD">12</span> cm</b></div>
+      <input type="range" id="slD" min="1" max="60" step="1" value="12">
+    </div>
+
+    <hr>
+    <div class="tag">Iluminación</div>
+    <div class="sl-row">
+      <div class="sl-lbl">Luz ambiental <b><span id="vA">65</span>%</b></div>
+      <input type="range" id="slA" min="0" max="200" step="1" value="65">
+    </div>
+    <div class="sl-row">
+      <div class="sl-lbl">Luz principal <b><span id="vL">130</span>%</b></div>
+      <input type="range" id="slL" min="0" max="400" step="1" value="130">
+    </div>
+    <div class="sl-row">
+      <div class="sl-lbl">Luz horizontal <b><span id="vLH">8</span></b></div>
+      <input type="range" id="slLH" min="-30" max="30" step="0.5" value="8">
+    </div>
+    <div class="sl-row">
+      <div class="sl-lbl">Luz vertical <b><span id="vLV">14</span></b></div>
+      <input type="range" id="slLV" min="-30" max="30" step="0.5" value="14">
+    </div>
+    <div class="sl-row">
+      <div class="sl-lbl">Sombra en pared <b><span id="vS">55</span>%</b></div>
+      <input type="range" id="slS" min="0" max="100" step="1" value="55">
+    </div>
+
+    <hr>
+    <div class="tag">Posición</div>
+    <div class="sl-row">
+      <div class="sl-lbl">← Izquierda / Derecha → <b><span id="vPX">0.00</span></b></div>
+      <input type="range" id="slPX" min="-15" max="15" step="0.02" value="0">
+    </div>
+    <div class="sl-row">
+      <div class="sl-lbl">↓ Abajo / Arriba ↑ <b><span id="vPY">0.00</span></b></div>
+      <input type="range" id="slPY" min="-10" max="10" step="0.02" value="0">
+    </div>
+    <div class="sl-row">
+      <div class="sl-lbl">Adelante / Atrás <b><span id="vPZ">0.00</span></b></div>
+      <input type="range" id="slPZ" min="-10" max="10" step="0.02" value="0">
+    </div>
+
+    <div class="tag" style="margin-top:2px">Rotación</div>
+    <div class="sl-row">
+      <div class="sl-lbl">Inclinar arriba/abajo <b><span id="vRX">0</span>°</b></div>
+      <input type="range" id="slRX" min="-45" max="45" step="0.5" value="0">
+    </div>
+    <div class="sl-row">
+      <div class="sl-lbl">Girar izq/der <b><span id="vRY">0</span>°</b></div>
+      <input type="range" id="slRY" min="-45" max="45" step="0.5" value="0">
+    </div>
+    <div class="sl-row">
+      <div class="sl-lbl">Inclinar lateral <b><span id="vRZ">0</span>°</b></div>
+      <input type="range" id="slRZ" min="-30" max="30" step="0.5" value="0">
+    </div>
+
+    <hr>
+    <div class="tag">Gizmo 3D</div>
+    <div class="gz-bar">
+      <div class="gz-btn on" id="gbT" onclick="setGizmoMode('translate')">⬆ Mover</div>
+      <div class="gz-btn"    id="gbR" onclick="setGizmoMode('rotate')">↻ Rotar</div>
+      <div class="gz-btn"    id="gbS" onclick="setGizmoMode('scale')">⤢ Escalar</div>
+    </div>
+
+    <hr>
+    <div style="display:flex;gap:6px">
+      <button class="btn btn-g" style="flex:1" id="btnRecalib">↩ Re-calibrar</button>
+      <button class="btn btn-r" style="flex:1" onclick="location.reload()">✕ Reset</button>
+    </div>
+  </div>
+
+  <div class="spacer"></div>
+  <p class="foot">CARTELAR © 2025</p>
+</div>
+
+<!-- file inputs: position:fixed top:-200px es la única técnica 100% fiable -->
+<input type="file" id="inModel" accept=".obj,.glb,.gltf" style="position:fixed;top:-200px;left:-200px;opacity:0;width:1px;height:1px;">
+<input type="file" id="inBg"   accept="image/*" style="position:fixed;top:-200px;left:-200px;opacity:0;width:1px;height:1px;">
+<input type="file" id="inLogo" accept="image/*" style="position:fixed;top:-200px;left:-200px;opacity:0;width:1px;height:1px;">
+
+<script>
+// openFile en scope global (no módulo) para que onclick="" lo encuentre
+function openFile(id){ document.getElementById(id).click(); }
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+function showErr(msg){ const b=document.getElementById('errBox'); b.style.display='block'; b.textContent=msg; console.error(msg); }
+window.addEventListener('error', e => showErr('JS Error: '+e.message));
+window.addEventListener('unhandledrejection', e => showErr('Promise Error: '+String(e.reason)));
+import { TransformControls } from 'three/addons/controls/TransformControls.js';
+import { RoomEnvironment }   from 'three/addons/environments/RoomEnvironment.js';
+import { OBJLoader }         from 'three/addons/loaders/OBJLoader.js';
+import { MTLLoader }         from 'three/addons/loaders/MTLLoader.js';
+import { GLTFLoader }        from 'three/addons/loaders/GLTFLoader.js';
+
+/* ─── helpers ─── */
+const $  = id => document.getElementById(id);
+const on = (id, ev, fn) => $(id).addEventListener(ev, fn);
+const setMode = t => $('modetxt').textContent = t;
+const toStep  = n => ['s1','s2','s3'].forEach((id,i) => $(id).classList.toggle('hidden', i !== n-1));
+const deg2rad = d => d * Math.PI / 180;
+
+/* ─── formatos ─── */
+const FMTS = { sq:{w:80,h:80}, wd:{w:220,h:60} };
+let fmt = 'sq';
+window.pickFmt = f => {
+  fmt = f;
+  $('optSq').classList.toggle('on', f==='sq');
+  $('optWd').classList.toggle('on', f==='wd');
+};
+
+/* ─── renderer ─── */
+const scene = new THREE.Scene();
+const cam   = new THREE.PerspectiveCamera(45, innerWidth/innerHeight, 0.01, 500);
+cam.position.set(0, 0, 20);
+$('modetxt').textContent = 'Inicio';  // Three.js loaded OK
+
+const rend = new THREE.WebGLRenderer({ antialias:true, alpha:true });
+rend.setSize(innerWidth, innerHeight);
+rend.setPixelRatio(Math.min(devicePixelRatio, 2));
+rend.outputColorSpace = THREE.SRGBColorSpace;
+rend.shadowMap.enabled = true;
+rend.shadowMap.type    = THREE.PCFSoftShadowMap;
+rend.toneMapping       = THREE.ACESFilmicToneMapping;
+rend.toneMappingExposure = 1.0;
+$('c3d').appendChild(rend.domElement);
+
+const pmrem = new THREE.PMREMGenerator(rend);
+scene.environment = pmrem.fromScene(new RoomEnvironment()).texture;
+pmrem.dispose();
+
+/* ─── luces ─── */
+const ambL = new THREE.AmbientLight(0xffffff, 0.65); scene.add(ambL);
+const dirL = new THREE.DirectionalLight(0xffffff, 1.3);
+dirL.position.set(8,14,16); dirL.castShadow = true;
+dirL.shadow.mapSize.set(2048,2048);
+Object.assign(dirL.shadow.camera,{near:.1,far:200,left:-40,right:40,top:40,bottom:-40});
+dirL.shadow.bias = -0.0002; dirL.shadow.normalBias = 0.015; dirL.shadow.radius = 2.5;
+scene.add(dirL);
+const fillL = new THREE.DirectionalLight(0xffffff, .35);
+fillL.position.set(-10, 5, 8);
+scene.add(fillL);
+
+/* ─── overlay 2D ─── */
+const ov  = $('c2d');
+const o2  = ov.getContext('2d');
+const resizeOv = () => { ov.width=innerWidth; ov.height=innerHeight; };
+resizeOv();
+
+/* ─── marcadores ─── */
+const MKS = [0,1,2,3].map(i=>$(`m${i}`));
+const pts = [{x:.33,y:.33},{x:.60,y:.33},{x:.60,y:.62},{x:.33,y:.62}];
+let calib=false, drag=null;
+
+const showMk = v => MKS.forEach(m=>m.classList.toggle('hidden',!v));
+const placeMk = () => MKS.forEach((m,i)=>{
+  m.style.left=(pts[i].x*innerWidth)+'px';
+  m.style.top=(pts[i].y*innerHeight)+'px';
+});
+/* ── VP geometry helpers (screen coords) ── */
+function line2FromPts(a, b) {
+  // Returns {A,B,C} for Ax+By+C=0
+  return { A: b.y-a.y, B: a.x-b.x, C: (b.x-a.x)*a.y - (b.y-a.y)*a.x };
+}
+function intersect2(l1, l2) {
+  const det = l1.A*l2.B - l2.A*l1.B;
+  if (Math.abs(det) < 0.5) return null; // parallel
+  return { x:(-l1.C*l2.B+l2.C*l1.B)/det, y:(-l1.A*l2.C+l2.A*l1.C)/det };
+}
+function computeVPs(px) {
+  // VP1: intersection of top edge (0→1) and bottom edge (3→2)
+  const vp1 = intersect2(line2FromPts(px[0],px[1]), line2FromPts(px[3],px[2]));
+  // VP2: intersection of left edge (0→3) and right edge (1→2)
+  const vp2 = intersect2(line2FromPts(px[0],px[3]), line2FromPts(px[1],px[2]));
+  return { vp1, vp2 };
+}
+function isOnScreen(p, margin=600) {
+  return p && isFinite(p.x) && isFinite(p.y)
+      && p.x>-margin && p.x<innerWidth+margin
+      && p.y>-margin && p.y<innerHeight+margin;
+}
+/* Clips a ray from origin through pt to canvas bounds */
+function rayToEdge(ox, oy, tx, ty) {
+  const dx=tx-ox, dy=ty-oy;
+  if(Math.abs(dx)<0.01&&Math.abs(dy)<0.01) return {x:tx,y:ty};
+  const W=innerWidth, H=innerHeight;
+  let tMin=0, tMax=1e9;
+  if(dx>0)  tMax=Math.min(tMax,(W-ox)/dx);
+  else if(dx<0) tMax=Math.min(tMax,-ox/dx);
+  if(dy>0)  tMax=Math.min(tMax,(H-oy)/dy);
+  else if(dy<0) tMax=Math.min(tMax,-oy/dy);
+  return { x:ox+dx*tMax, y:oy+dy*tMax };
+}
+function rayToEdgeBack(ox, oy, tx, ty) {
+  return rayToEdge(ox,oy, ox-(tx-ox)*1e6, oy-(ty-oy)*1e6);
+}
+
+function drawOv(){
+  o2.clearRect(0,0,ov.width,ov.height);
+  if(!calib) return;
+  const px=pts.map(p=>({x:p.x*ov.width,y:p.y*ov.height}));
+  const { vp1, vp2 } = computeVPs(px);
+
+  /* VP guide lines */
+  const drawVPLines = (vp, corners, color) => {
+    if(!vp) return;
+    const onScr = isOnScreen(vp, 60);
+    corners.forEach(ci => {
+      const c=px[ci];
+      o2.beginPath();
+      if(onScr) {
+        // VP visible: draw ray from VP through corner to edge
+        const e1=rayToEdge(vp.x,vp.y,c.x,c.y);
+        const e2=rayToEdgeBack(vp.x,vp.y,c.x,c.y);
+        o2.moveTo(e2.x,e2.y); o2.lineTo(e1.x,e1.y);
+      } else {
+        // VP off-screen: draw long line through corner in VP direction
+        const dx=c.x-vp.x, dy=c.y-vp.y, len=Math.sqrt(dx*dx+dy*dy)||1;
+        o2.moveTo(c.x-dx/len*2000, c.y-dy/len*2000);
+        o2.lineTo(c.x+dx/len*2000, c.y+dy/len*2000);
+      }
+      o2.strokeStyle=color; o2.lineWidth=1; o2.setLineDash([3,5]); o2.stroke(); o2.setLineDash([]);
+    });
+    /* VP dot (only if on screen) */
+    if(onScr) {
+      o2.beginPath(); o2.arc(vp.x,vp.y,6,0,Math.PI*2);
+      o2.fillStyle=color; o2.fill();
+      o2.beginPath(); o2.arc(vp.x,vp.y,10,0,Math.PI*2);
+      o2.strokeStyle=color; o2.lineWidth=1.5; o2.stroke();
+    }
+  };
+
+  drawVPLines(vp1, [0,1,2,3], 'rgba(255,180,60,0.55)');  // VP1 horizontal → amber
+  drawVPLines(vp2, [0,1,2,3], 'rgba(160,100,255,0.55)');  // VP2 vertical → purple
+
+  /* Quad fill + border */
+  o2.beginPath(); o2.moveTo(px[0].x,px[0].y);
+  px.slice(1).forEach(p=>o2.lineTo(p.x,p.y)); o2.closePath();
+  o2.fillStyle='rgba(0,229,255,.06)'; o2.fill();
+  o2.strokeStyle='rgba(0,229,255,.85)'; o2.lineWidth=1.5;
+  o2.setLineDash([5,4]); o2.stroke(); o2.setLineDash([]);
+
+  /* Diagonals */
+  o2.strokeStyle='rgba(0,229,255,.18)'; o2.lineWidth=1;
+  o2.beginPath();
+  o2.moveTo(px[0].x,px[0].y); o2.lineTo(px[2].x,px[2].y);
+  o2.moveTo(px[1].x,px[1].y); o2.lineTo(px[3].x,px[3].y);
+  o2.stroke();
+
+  /* VP status */
+  const vpEl = $('vpStatus');
+  if(vpEl) {
+    const v1ok=isOnScreen(vp1,100), v2ok=isOnScreen(vp2,100);
+    const vpFar = p => p && isFinite(p.x) && !isOnScreen(p,100);
+    vpEl.style.color = (v1ok||vpFar(vp1)) && (v2ok||vpFar(vp2)) ? '#00e5ff88' : '#555';
+    vpEl.textContent = (!vp1&&!vp2) ? 'Mueve los markers para calcular VPs' :
+      [vp1 ? (isOnScreen(vp1,60)?`VP1 (${vp1.x.toFixed(0)},${vp1.y.toFixed(0)})`:'VP1 lejano') :'',
+       vp2 ? (isOnScreen(vp2,60)?`VP2 (${vp2.x.toFixed(0)},${vp2.y.toFixed(0)})`:'VP2 lejano') :'']
+      .filter(Boolean).join(' · ');
+  }
+}
+
+window.addEventListener('pointerdown',e=>{
+  const idx=MKS.indexOf(e.target.closest?.('.mk')??e.target);
+  if(idx!==-1&&calib){drag=idx;e.preventDefault();}
+});
+window.addEventListener('pointermove',e=>{
+  if(drag===null||!calib)return;
+  pts[drag].x=Math.max(.01,Math.min(.99,e.clientX/innerWidth));
+  pts[drag].y=Math.max(.01,Math.min(.99,e.clientY/innerHeight));
+  placeMk(); drawOv();
+});
+window.addEventListener('pointerup',()=>{
+  if(drag!==null && calib) snapToPerspective(drag);
+  drag=null;
+});
+
+/* ─── Snap markers to VP lines ─────────────────────────────────
+   After dragging marker i, recompute the two VPs from the
+   OTHER 3 markers, then move marker i to the exact intersection
+   of the two VP-lines it belongs to.
+   If called without index (full snap), adjusts all 4 corners.
+───────────────────────────────────────────────────────────── */
+window.snapToPerspective = function snapToPerspective(movedIdx) {
+  const W=innerWidth, H=innerHeight;
+  const px=pts.map(p=>({x:p.x*W, y:p.y*H}));
+
+  // Pairs: [top-pair, bottom-pair] for VP1 (horizontal lines)
+  //        [left-pair, right-pair] for VP2 (vertical lines)
+  // marker roles: 0=TL 1=TR 2=BR 3=BL
+  const vpEdges1 = [[0,1],[3,2]]; // top and bottom → VP1
+  const vpEdges2 = [[0,3],[1,2]]; // left and right → VP2
+
+  /* Compute both VPs ignoring moved marker (use raw edge lines) */
+  const vp1 = intersect2(line2FromPts(px[0],px[1]), line2FromPts(px[3],px[2]));
+  const vp2 = intersect2(line2FromPts(px[0],px[3]), line2FromPts(px[1],px[2]));
+
+  if(!vp1 || !vp2) return; // degenerate
+
+  // For each marker, which VP-line should it lie on?
+  // 0(TL): VP1-line via top edge, VP2-line via left edge
+  // 1(TR): VP1-line via top edge, VP2-line via right edge
+  // 2(BR): VP1-line via bottom edge, VP2-line via right edge
+  // 3(BL): VP1-line via bottom edge, VP2-line via left edge
+
+  // The "partner" for each marker on VP1 and VP2
+  const vp1Partner = [1, 0, 3, 2]; // TL↔TR, BR↔BL
+  const vp2Partner = [3, 2, 1, 0]; // TL↔BL, TR↔BR
+
+  const snapOne = (i) => {
+    const partner1 = px[vp1Partner[i]];
+    const partner2 = px[vp2Partner[i]];
+    // Line from VP1 through partner1 → our marker should lie on this line
+    const l1 = vp1 ? line2FromPts(vp1, partner1) : line2FromPts(partner1, px[i]);
+    // Line from VP2 through partner2 → our marker should lie on this line
+    const l2 = vp2 ? line2FromPts(vp2, partner2) : line2FromPts(partner2, px[i]);
+    const snapped = intersect2(l1, l2);
+    if(snapped && isFinite(snapped.x) && isFinite(snapped.y)) {
+      // Blend: 70% snapped, 30% original (smooth, not jarring)
+      const blend = 0.72;
+      pts[i].x = Math.max(0.01, Math.min(0.99, (snapped.x*blend + px[i].x*(1-blend))/W));
+      pts[i].y = Math.max(0.01, Math.min(0.99, (snapped.y*blend + px[i].y*(1-blend))/H));
+    }
+  };
+
+  if(movedIdx !== undefined) {
+    snapOne(movedIdx);
+  } else {
+    // Full snap: iterate twice for convergence
+    for(let pass=0; pass<2; pass++) [0,1,2,3].forEach(i => snapOne(i));
+  }
+
+  placeMk(); drawOv();
+}
+
+window.resetMarkers = () => {
+  pts[0]={x:.30,y:.28}; pts[1]={x:.65,y:.28};
+  pts[2]={x:.65,y:.65}; pts[3]={x:.30,y:.65};
+  placeMk(); drawOv();
+};
+
+/* ─── raycaster ─── */
+const RC = new THREE.Raycaster();
+function screenTo3D(nx, ny, plane){
+  RC.setFromCamera(new THREE.Vector2(nx*2-1, -(ny*2-1)), cam);
+  const hit = new THREE.Vector3();
+  return RC.ray.intersectPlane(plane, hit) ? hit.clone() : null;
+}
+
+/* ══════════════════════════════════════════════════
+   NÚCLEO: Geometría perspectiva exacta
+   La cara frontal del cartel ES el quad de los markers,
+   respetando toda la distorsión de perspectiva real.
+══════════════════════════════════════════════════ */
+
+/* Estima la normal real de la pared a partir de los puntos de fuga del quad.
+   Si los 4 markers forman un trapezoide perspectivo, los lados "paralelos"
+   convergen en vanishing points que revelan la orientación 3D de la superficie. */
+function estimateWallNormal() {
+  const W = innerWidth, H = innerHeight;
+  const px = pts.map(p => [p.x * W, p.y * H, 1.0]);
+
+  // Producto vectorial de vectores 3D (usado en coordenadas homogéneas 2D)
+  const cross3 = (a, b) => [
+    a[1]*b[2] - a[2]*b[1],
+    a[2]*b[0] - a[0]*b[2],
+    a[0]*b[1] - a[1]*b[0]
+  ];
+
+  // VP horizontal: intersección de arista superior (TL→TR) y inferior (BL→BR)
+  const vp1 = cross3(cross3(px[0], px[1]), cross3(px[3], px[2]));
+  // VP vertical:   intersección de arista izquierda (TL→BL) y derecha (TR→BR)
+  const vp2 = cross3(cross3(px[0], px[3]), cross3(px[1], px[2]));
+
+  // Intrínsecos de la cámara Three.js (fov=45, píxeles cuadrados)
+  const fovRad = 45 * Math.PI / 180;
+  const fy = (H / 2) / Math.tan(fovRad / 2);
+  const cx = W / 2, cy = H / 2;
+
+  // Convierte VP homogéneo → dirección 3D (rayo desde la cámara)
+  const vpToDir = ([x, y, w]) => {
+    if (Math.abs(w) < 1e-6) // punto en el infinito → líneas paralelas
+      return new THREE.Vector3(x / fy, -y / fy, 0).normalize();
+    return new THREE.Vector3((x/w - cx) / fy, -(y/w - cy) / fy, -1).normalize();
+  };
+
+  const d1 = vpToDir(vp1);
+  const d2 = vpToDir(vp2);
+
+  let n = new THREE.Vector3().crossVectors(d1, d2).normalize();
+  if (n.z < 0) n.negate();                          // que apunte hacia la cámara
+  if (isNaN(n.x) || n.lengthSq() < 0.1) n.set(0, 0, 1); // fallback si quad degenerado
+  return n;
+}
+
+/* Proyecta los 4 markers sobre el plano INCLINADO de la pared real.
+   Si la pared está en perspectiva, los vértices tendrán Z distintas
+   y outNorm en buildPerspectiveBox será el normal correcto → grosor visible. */
+function getMarker3DPoints() {
+  const bgZ       = bgMesh ? bgMesh.position.z : -5;
+  const flatPlane = new THREE.Plane(new THREE.Vector3(0, 0, 1), -bgZ);
+  const wallNorm  = estimateWallNormal();
+
+  // Centro aproximado sobre el plano plano
+  const avgPt = screenTo3D(
+    pts.reduce((s, p) => s + p.x, 0) / 4,
+    pts.reduce((s, p) => s + p.y, 0) / 4,
+    flatPlane
+  );
+  if (!avgPt) return pts.map(p => screenTo3D(p.x, p.y, flatPlane));
+
+  // Plano inclinado que pasa por el centro con el normal real de la pared
+  const tiltedPlane = new THREE.Plane(wallNorm, -wallNorm.dot(avgPt));
+
+  const raw = pts.map(p => screenTo3D(p.x, p.y, tiltedPlane));
+  if (raw.some(v => v === null)) return pts.map(p => screenTo3D(p.x, p.y, flatPlane));
+
+  // Para el formato panorámico forzamos la proporción 220:60 = 11:3
+  if (fmt === 'wd') return enforceAspect(raw, 220 / 60);
+
+  return raw;
+}
+
+/* Fuerza una proporción W:H sobre el quad 3D manteniendo centro y orientación.
+   Calcula ejes locales del quad, promedia W y H actuales, y reescala
+   los 4 vértices para que W_new/H_new == targetAR. */
+function enforceAspect(v, targetAR) {
+  const center = new THREE.Vector3()
+    .add(v[0]).add(v[1]).add(v[2]).add(v[3]).multiplyScalar(0.25);
+
+  // Ejes locales promediados
+  const xDir = new THREE.Vector3()
+    .addVectors(
+      new THREE.Vector3().subVectors(v[1], v[0]).normalize(),
+      new THREE.Vector3().subVectors(v[2], v[3]).normalize()
+    ).normalize();
+  const yDir = new THREE.Vector3()
+    .addVectors(
+      new THREE.Vector3().subVectors(v[3], v[0]).normalize(),
+      new THREE.Vector3().subVectors(v[2], v[1]).normalize()
+    ).normalize();
+
+  // Dimensiones actuales (media de lados opuestos)
+  const curW = (v[0].distanceTo(v[1]) + v[3].distanceTo(v[2])) * 0.5;
+  const curH = (v[0].distanceTo(v[3]) + v[1].distanceTo(v[2])) * 0.5;
+
+  // Ajustamos H manteniendo W fija → el usuario controla el ancho con los markers
+  const newH = curW / targetAR;
+
+  const hw = curW * 0.5;
+  const hh = newH * 0.5;
+
+  // Reconstruir quad rectángulo perspectivo con los ejes reales de la pared
+  return [
+    center.clone().addScaledVector(xDir, -hw).addScaledVector(yDir, -hh), // TL
+    center.clone().addScaledVector(xDir,  hw).addScaledVector(yDir, -hh), // TR
+    center.clone().addScaledVector(xDir,  hw).addScaledVector(yDir,  hh), // BR
+    center.clone().addScaledVector(xDir, -hw).addScaledVector(yDir,  hh), // BL
+  ];
+}
+
+/* Calcula grosor en unidades 3D */
+function calcDepth3D(frontVerts) {
+  const W = (frontVerts[0].distanceTo(frontVerts[1]) + frontVerts[3].distanceTo(frontVerts[2])) * 0.5;
+  const H = (frontVerts[0].distanceTo(frontVerts[3]) + frontVerts[1].distanceTo(frontVerts[2])) * 0.5;
+  const refCm = Math.max(FMTS[fmt].w, FMTS[fmt].h);
+  return { D: (depthCm / refCm) * Math.max(W, H), W, H };
+}
+
+/*
+  buildPerspectiveBox(frontVerts, depth)
+  ──────────────────────────────────────
+  frontVerts: [TL, TR, BR, BL] — THREE.Vector3 en world space
+  Cara frontal = quad exacto de los markers.
+  Winding CCW desde fuera en cada cara → computeVertexNormals() correcto.
+
+  Grupos:  0 → frontal (logo)  1 → trasera  2 → 4 laterales
+*/
+function buildPerspectiveBox(frontVerts, depth) {
+
+  /* Normal exterior (hacia la cámara) */
+  const edge1   = new THREE.Vector3().subVectors(frontVerts[1], frontVerts[0]);
+  const edge2   = new THREE.Vector3().subVectors(frontVerts[3], frontVerts[0]);
+  const outNorm = new THREE.Vector3().crossVectors(edge1, edge2).normalize();
+  if (outNorm.dot(new THREE.Vector3().subVectors(cam.position, frontVerts[0])) < 0)
+    outNorm.negate();
+
+  /* Pivot = centro de la cara frontal */
+  const center = new THREE.Vector3()
+    .add(frontVerts[0]).add(frontVerts[1])
+    .add(frontVerts[2]).add(frontVerts[3])
+    .multiplyScalar(0.25);
+
+  /* Vértices en espacio local del mesh
+     f[0]=TL  f[1]=TR  f[2]=BR  f[3]=BL
+     b[*]     = mismos pero retranqueados –depth en dirección outNorm */
+  const f = frontVerts.map(v => v.clone().sub(center));
+  const b = f.map(v => v.clone().addScaledVector(outNorm, -depth));
+
+  const pos = [], uv = [], idx = [];
+  let vi = 0;
+
+  /* Añade una cara como quad (4 verts, 2 triángulos).
+     El winding CCW desde fuera garantiza normales correctas
+     al llamar geo.computeVertexNormals(). */
+  function addFace(verts, uvs) {
+    verts.forEach((v, i) => {
+      pos.push(v.x, v.y, v.z);
+      uv.push(uvs[i * 2], uvs[i * 2 + 1]);
+    });
+    /* Dos triángulos: (0,1,2) y (0,2,3) */
+    idx.push(vi, vi+1, vi+2,  vi, vi+2, vi+3);
+    vi += 4;
+  }
+
+  /* ── Frontal: outNorm hacia cámara
+       CCW desde cámara: TL→BL→BR→TR */
+  addFace(
+    [f[0], f[3], f[2], f[1]],
+    [0,1,  0,0,  1,0,  1,1]   // UV: TL(0,1) BL(0,0) BR(1,0) TR(1,1)
+  );
+
+  /* ── Trasera: –outNorm (apunta hacia la pared)
+       CCW desde atrás: TR_b→BR_b→BL_b→TL_b */
+  addFace(
+    [b[1], b[2], b[3], b[0]],
+    [1,1,  1,0,  0,0,  0,1]
+  );
+
+  /* ── Superior: normal ≈ +Y
+       CCW desde arriba: TL_f→TR_f→TR_b→TL_b */
+  addFace(
+    [f[0], f[1], b[1], b[0]],
+    [0,1,  1,1,  1,0,  0,0]
+  );
+
+  /* ── Inferior: normal ≈ –Y
+       CCW desde abajo: BL_f→BL_b→BR_b→BR_f */
+  addFace(
+    [f[3], b[3], b[2], f[2]],
+    [0,0,  0,1,  1,1,  1,0]
+  );
+
+  /* ── Derecha: normal ≈ +X
+       CCW desde la derecha: TR_f→BR_f→BR_b→TR_b */
+  addFace(
+    [f[1], f[2], b[2], b[1]],
+    [0,1,  0,0,  1,0,  1,1]
+  );
+
+  /* ── Izquierda: normal ≈ –X
+       CCW desde la izquierda: TL_b→BL_b→BL_f→TL_f */
+  addFace(
+    [b[0], b[3], f[3], f[0]],
+    [1,1,  1,0,  0,0,  0,1]
+  );
+
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  geo.setAttribute('uv',       new THREE.Float32BufferAttribute(uv,  2));
+  geo.setIndex(idx);
+  geo.computeVertexNormals();   // normales correctas por cara
+  geo.addGroup( 0,  6, 0);      // frontal
+  geo.addGroup( 6,  6, 1);      // trasera
+  geo.addGroup(12, 18, 2);      // 4 laterales
+
+  return { geo, center, outNorm };
+}
+
+/* ─── objetos escena ─── */
+let bgMesh=null, signMesh=null, wallShad=null, ctrl=null;
+
+// Textura del logo — persiste entre reconstrucciones
+let logoTex = null;
+
+// Estado ajuste fino
+let basePos  = new THREE.Vector3();
+let baseQuat = new THREE.Quaternion();
+let fineOff  = new THREE.Vector3();
+let fineRot  = new THREE.Vector3();   // grados XYZ
+let depthCm  = 12;
+
+/* ── Crea el cartel 3D perspectivo desde cero ── */
+function createSign() {
+  if(signMesh){ scene.remove(signMesh); signMesh.geometry.dispose(); signMesh=null; }
+  if(wallShad){ scene.remove(wallShad); wallShad=null; }
+  if(ctrl)    { scene.remove(ctrl); ctrl.dispose(); ctrl=null; }
+
+  const frontVerts = getMarker3DPoints();
+  if (frontVerts.some(v => v === null)) {
+    console.warn('No se pudo proyectar los markers'); return;
+  }
+
+  const { D } = calcDepth3D(frontVerts);
+  const { geo, center, outNorm } = buildPerspectiveBox(frontVerts, D);
+
+  const frontMat = new THREE.MeshStandardMaterial({
+    color: 0xffffff, roughness: 0.15, metalness: 0.0,
+    map: logoTex || null,
+  });
+  const backMat  = new THREE.MeshStandardMaterial({
+    color: 0xffffff, roughness: 0.15, metalness: 0.0,
+    map: logoTex || null,
+  });
+  const sideMat  = new THREE.MeshStandardMaterial({
+    color: 0xcccccc, roughness: 0.25, metalness: 0.7,
+    envMapIntensity: 1.2,
+  });
+
+  signMesh = new THREE.Mesh(geo, [frontMat, backMat, sideMat]);
+  signMesh.castShadow = true;
+  signMesh.position.copy(center);  // pivot = centro de la cara frontal
+  scene.add(signMesh);
+
+  basePos.copy(center);
+  baseQuat.identity();
+  fineOff.set(0,0,0);
+  fineRot.set(0,0,0);
+
+  // Sombra proyectada en la pared
+  const { W, H } = calcDepth3D(frontVerts);
+  const sz = Math.max(W, H) * 3;
+  wallShad = new THREE.Mesh(
+    new THREE.PlaneGeometry(sz, sz),
+    new THREE.ShadowMaterial({ opacity:0.55, transparent:true, depthWrite:false })
+  );
+  wallShad.quaternion.setFromUnitVectors(new THREE.Vector3(0,0,1), outNorm);
+  wallShad.position.copy(center).addScaledVector(outNorm, -D - 0.01);
+  wallShad.receiveShadow = true;
+  scene.add(wallShad);
+
+  // Gizmo
+  ctrl = new TransformControls(cam, rend.domElement);
+  ctrl.attach(signMesh);
+  ctrl.setMode('translate');
+  ctrl.setSpace('world');
+  scene.add(ctrl);
+
+  ctrl.addEventListener('objectChange', () => {
+    // Lock scale proportions: use the axis being dragged (max deviation from 1)
+    if (ctrl.getMode() === 'scale') {
+      const s = signMesh.scale;
+      const uniform = Math.max(s.x, s.y, s.z);
+      signMesh.scale.set(uniform, uniform, uniform);
+    }
+    basePos.copy(signMesh.position);
+    baseQuat.copy(signMesh.quaternion);
+    fineOff.set(0,0,0);
+    fineRot.set(0,0,0);
+    syncFineUI();
+  });
+
+  syncFineUI();
+}
+
+/* ── Reconstruye solo el grosor manteniendo logo y posición ── */
+function rebuildDepth() {
+  if (!signMesh) return;
+
+  const frontVerts = getMarker3DPoints();
+  if (frontVerts.some(v => v === null)) return;
+
+  const { D } = calcDepth3D(frontVerts);
+  const { geo } = buildPerspectiveBox(frontVerts, D);
+
+  signMesh.geometry.dispose();
+  signMesh.geometry = geo;
+  // El pivot no cambia (sigue siendo el centro de la cara frontal)
+}
+
+/* ── Ajuste fino ── */
+function applyFine() {
+  if (!signMesh) return;
+  signMesh.position.copy(basePos).add(fineOff);
+
+  const fineQ = new THREE.Quaternion().setFromEuler(
+    new THREE.Euler(deg2rad(fineRot.x), deg2rad(fineRot.y), deg2rad(fineRot.z), 'XYZ')
+  );
+  signMesh.quaternion.copy(baseQuat).multiply(fineQ);
+  if (ctrl) ctrl.updateMatrixWorld(true);
+}
+
+function syncFineUI() {
+  [['slPX','vPX',fineOff.x,2],['slPY','vPY',fineOff.y,2],['slPZ','vPZ',fineOff.z,2],
+   ['slRX','vRX',fineRot.x,1],['slRY','vRY',fineRot.y,1],['slRZ','vRZ',fineRot.z,1]]
+  .forEach(([sl,sp,v,d])=>{ $(sl).value=v; $(sp).textContent=v.toFixed(d); });
+}
+
+/* ─── flujo ─── */
+on('inBg','change', e => {
+  try {
+    const f = e.target.files?.[0];
+    if(!f){ showErr('No se seleccionó archivo'); return; }
+    const reader = new FileReader();
+    reader.onerror = () => showErr('FileReader error: ' + reader.error);
+    reader.onload = evt => {
+      const img = new Image();
+      img.onerror = () => showErr('Image load error - formato no soportado');
+      img.onload = () => {
+        try {
+          if(typeof THREE === 'undefined'){ showErr('Three.js no cargó - revisa tu conexión a internet'); return; }
+          const tex = new THREE.Texture(img);
+          tex.colorSpace = THREE.SRGBColorSpace;
+          tex.needsUpdate = true;
+          if(bgMesh) scene.remove(bgMesh);
+          const asp = img.width / img.height, H = 20;
+          bgMesh = new THREE.Mesh(
+            new THREE.PlaneGeometry(H*asp, H),
+            new THREE.MeshBasicMaterial({map:tex, depthTest:false})
+          );
+          bgMesh.position.z = -5;
+          scene.add(bgMesh);
+          toStep(2); calib=true; showMk(true); placeMk(); drawOv(); setMode('Calibración');
+        } catch(err){ showErr('Error al crear textura: '+err.message); }
+      };
+      img.src = evt.target.result;
+    };
+    reader.readAsDataURL(f);
+  } catch(err){ showErr('Error inBg: '+err.message); }
+});
+
+on('btnGen','click',()=>{
+  calib=false; showMk(false); o2.clearRect(0,0,ov.width,ov.height);
+  toStep(3); createSign(); setMode('Edición');
+  setTimeout(maybeReplaceWithModel, 50);
+});
+
+on('btnRecalib','click',()=>{
+  if(signMesh){scene.remove(signMesh);signMesh.geometry.dispose();signMesh=null;}
+  if(wallShad){scene.remove(wallShad);wallShad=null;}
+  if(ctrl){scene.remove(ctrl);ctrl.dispose();ctrl=null;}
+  toStep(2); calib=true; showMk(true); placeMk(); drawOv(); setMode('Calibración');
+});
+
+/* ─── LOGO ───────────────────────────────────────
+   El logo se guarda en `logoTex` (variable global).
+   Se aplica al material frontMat de signMesh.
+   Si signMesh existe: actualiza directo.
+   Si no existe aún: se aplicará al crearse.
+─────────────────────────────────────────────── */
+on('inLogo','change', e => {
+  const f = e.target.files?.[0]; if(!f) return;
+  const reader = new FileReader();
+  reader.onload = evt => {
+    const img = new Image();
+    img.onload = () => {
+      if (logoTex) logoTex.dispose();
+      const tex = new THREE.Texture(img);
+      tex.colorSpace = THREE.SRGBColorSpace;
+      tex.anisotropy  = rend.capabilities.getMaxAnisotropy();
+      tex.needsUpdate = true;
+      logoTex = tex;
+      refreshModelLogo();
+
+      if (signMesh && Array.isArray(signMesh.material)) {
+        signMesh.material[0].map = tex;
+        signMesh.material[0].needsUpdate = true;
+        signMesh.material[1].map = tex;
+        signMesh.material[1].needsUpdate = true;
+      }
+
+      $('logoZone').classList.add('ok');
+      $('logoLbl').textContent = '\u2713 ' + f.name;
+    };
+    img.src = evt.target.result;
+  };
+  reader.readAsDataURL(f);
+  e.target.value = '';
+});
+
+/* ─── sliders ─── */
+function sl(id, spanId, dec, fn) {
+  on(id,'input',function(){ $(spanId).textContent=parseFloat(this.value).toFixed(dec); fn(+this.value); });
+}
+
+sl('slD',  'vD',  0, v => { depthCm=v; rebuildDepth(); });
+sl('slA',  'vA',  0, v => ambL.intensity=v/100);
+sl('slL',  'vL',  0, v => dirL.intensity=v/100);
+sl('slLH', 'vLH', 1, v => dirL.position.x=v);
+sl('slLV', 'vLV', 1, v => dirL.position.y=v);
+sl('slS',  'vS',  0, v => { if(wallShad) wallShad.material.opacity=v/100; });
+sl('slPX', 'vPX', 2, v => { fineOff.x=v; applyFine(); });
+sl('slPY', 'vPY', 2, v => { fineOff.y=v; applyFine(); });
+sl('slPZ', 'vPZ', 2, v => { fineOff.z=v; applyFine(); });
+sl('slRX', 'vRX', 1, v => { fineRot.x=v; applyFine(); });
+sl('slRY', 'vRY', 1, v => { fineRot.y=v; applyFine(); });
+sl('slRZ', 'vRZ', 1, v => { fineRot.z=v; applyFine(); });
+
+/* ─── gizmo ─── */
+window.setGizmoMode = mode => {
+  if(ctrl) ctrl.setMode(mode);
+  ['gbT','gbR','gbS'].forEach(id=>$(id).classList.remove('on'));
+  $({translate:'gbT',rotate:'gbR',scale:'gbS'}[mode]).classList.add('on');
+  setMode({translate:'Mover',rotate:'Rotar',scale:'Escalar'}[mode]);
+};
+
+/* ─── teclado ─── */
+window.addEventListener('keydown',e=>{
+  if(!ctrl) return;
+  const k=e.key.toLowerCase();
+  if(k==='w') window.setGizmoMode('translate');
+  if(k==='e') window.setGizmoMode('rotate');
+  if(k==='r') window.setGizmoMode('scale');
+  if(k==='q') ctrl.setSpace(ctrl.space==='local'?'world':'local');
+  if(k==='escape') ctrl.visible=!ctrl.visible;
+});
+
+/* ─── resize ─── */
+window.addEventListener('resize',()=>{
+  cam.aspect=innerWidth/innerHeight; cam.updateProjectionMatrix();
+  rend.setSize(innerWidth,innerHeight); rend.setPixelRatio(Math.min(devicePixelRatio,2));
+  resizeOv(); placeMk(); drawOv();
+});
+
+/* ─── loop ─── */
+(function loop(){ requestAnimationFrame(loop); rend.render(scene,cam); })();
+
+
+
+
+/* ═══════════════════════════════════════════════════
+   MODELO 3D — CARTEL GLB EMBEBIDO
+   
+   El GLB usa vertex colors (COLOR_0) en vez de materiales separados.
+   Estrategia: después de cargar con GLTFLoader, recorremos la geometría
+   y separamos los triángulos rojos (logo) de los grises (cuerpo)
+   creando dos Mesh independientes con materiales distintos.
+   
+   Color rojo logo: RGB(0.91, 0.11, 0.18)  → r>0.6 && g<0.35 && b<0.35
+   Color cuerpo:    RGB(0.75, 0.78, 0.80)
+═══════════════════════════════════════════════════ */
+
+// GLB embebido en base64
+const SIGN_GLB_B64 = 'Z2xURgIAAAB8HgAAyAQAAEpTT057ImJ1ZmZlclZpZXdzIjpbeyJidWZmZXIiOjAsImJ5dGVPZmZzZXQiOjAsImJ5dGVMZW5ndGgiOjI4MDgsInRhcmdldCI6MzQ5NjIsImJ5dGVTdHJpZGUiOjEyfSx7ImJ1ZmZlciI6MCwiYnl0ZU9mZnNldCI6MjgwOCwiYnl0ZUxlbmd0aCI6OTM2LCJ0YXJnZXQiOjM0OTYzfSx7ImJ1ZmZlciI6MCwiYnl0ZU9mZnNldCI6Mzc0NCwiYnl0ZUxlbmd0aCI6MjgwOCwidGFyZ2V0IjozNDk2MiwiYnl0ZVN0cmlkZSI6MTJ9XSwiYWNjZXNzb3JzIjpbeyJidWZmZXJWaWV3IjowLCJjb21wb25lbnRUeXBlIjo1MTI2LCJjb3VudCI6MjM0LCJtYXgiOlswLjA0NCwwLjAwNjI1LDAuMDk3XSwibWluIjpbLTAuMDUzMDY0OTk4NjI2NzA4OTg1LC0wLjAyMTk4OTk5OTc3MTExODE2NiwwLjAxNjg5Njk5OTM1OTEzMDg2XSwidHlwZSI6IlZFQzMifSx7ImJ1ZmZlclZpZXciOjEsImNvbXBvbmVudFR5cGUiOjUxMjUsImNvdW50IjoyMzQsIm1heCI6WzIzM10sIm1pbiI6WzBdLCJ0eXBlIjoiU0NBTEFSIn0seyJidWZmZXJWaWV3IjoyLCJjb21wb25lbnRUeXBlIjo1MTI2LCJjb3VudCI6MjM0LCJtYXgiOlswLjkxMzcyNTQ5MDE5NjA3ODQsMC43ODAzOTIxNTY4NjI3NDUxLDAuOF0sIm1pbiI6WzAuNzQ5MDE5NjA3ODQzMTM3MywwLjExMzcyNTQ5MDE5NjA3ODQzLDAuMTc2NDcwNTg4MjM1Mjk0MTNdLCJ0eXBlIjoiVkVDMyJ9XSwiYXNzZXQiOnsidmVyc2lvbiI6IjIuMCIsImdlbmVyYXRvciI6IkF1dG9kZXNrLlRpbmtlcmNhZCJ9LCJtYXRlcmlhbHMiOlt7InBick1ldGFsbGljUm91Z2huZXNzIjp7Im1ldGFsbGljRmFjdG9yIjowLjUsInJvdWdobmVzc0ZhY3RvciI6MC41fSwibmFtZSI6ImxhbWJlcnQyU0cuMDAxIn1dLCJtZXNoZXMiOlt7InByaW1pdGl2ZXMiOlt7Im1v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tbQ0PurpaT/p6Og9tbQ0PurpaT/p6Og9tbQ0PurpaT/p6Og9tbQ0PurpaT/p6Og9tbQ0PurpaT/p6Og9tbQ0PurpaT/p6Og9tbQ0PurpaT/p6Og9tbQ0PurpaT/p6Og9tbQ0PurpaT/p6Og9tbQ0PurpaT/p6Og9tbQ0PurpaT/p6Og9tbQ0PsC/Pz/Ix0c/zcxMP8C/Pz/Ix0c/zcxMP8C/Pz/Ix0c/zcxMP8C/Pz/Ix0c/zcxMP8C/Pz/Ix0c/zcxMP8C/Pz/Ix0c/zcxMP8C/Pz/Ix0c/zcxMP8C/Pz/Ix0c/zcxMP8C/Pz/Ix0c/zcxMP8C/Pz/Ix0c/zcxMP8C/Pz/Ix0c/zcxMP8C/Pz/Ix0c/zcxMP+rpaT/p6Og9tbQ0PurpaT/p6Og9tbQ0PurpaT/p6Og9tbQ0PurpaT/p6Og9tbQ0PurpaT/p6Og9tbQ0PurpaT/p6Og9tbQ0PurpaT/p6Og9tbQ0PurpaT/p6Og9tbQ0PurpaT/p6Og9tbQ0PurpaT/p6Og9tbQ0PurpaT/p6Og9tbQ0PurpaT/p6Og9tbQ0PurpaT/p6Og9tbQ0PurpaT/p6Og9tbQ0PurpaT/p6Og9tbQ0PsC/Pz/Ix0c/zcxMP8C/Pz/Ix0c/zcxMP8C/Pz/Ix0c/zcxMP8C/Pz/Ix0c/zcxMP8C/Pz/Ix0c/zcxMP8C/Pz/Ix0c/zcxMP+rpaT/p6Og9tbQ0PurpaT/p6Og9tbQ0PurpaT/p6Og9tbQ0PurpaT/p6Og9tbQ0PurpaT/p6Og9tbQ0PurpaT/p6Og9tbQ0PurpaT/p6Og9tbQ0PurpaT/p6Og9tbQ0PurpaT/p6Og9tbQ0PurpaT/p6Og9tbQ0PurpaT/p6Og9tbQ0PurpaT/p6Og9tbQ0PsC/Pz/Ix0c/zcxMP8C/Pz/Ix0c/zcxMP8C/Pz/Ix0c/zcxMP8C/Pz/Ix0c/zcxMP8C/Pz/Ix0c/zcxMP8C/Pz/Ix0c/zcxMP+rpaT/p6Og9tbQ0PurpaT/p6Og9tbQ0PurpaT/p6Og9tbQ0PurpaT/p6Og9tbQ0PurpaT/p6Og9tbQ0PurpaT/p6Og9tbQ0PurpaT/p6Og9tbQ0PurpaT/p6Og9tbQ0PurpaT/p6Og9tbQ0PurpaT/p6Og9tbQ0PurpaT/p6Og9tbQ0PurpaT/p6Og9tbQ0PsC/Pz/Ix0c/zcxMP8C/Pz/Ix0c/zcxMP8C/Pz/Ix0c/zcxMP8C/Pz/Ix0c/zcxMP8C/Pz/Ix0c/zcxMP8C/Pz/Ix0c/zcxMP8C/Pz/Ix0c/zcxMP8C/Pz/Ix0c/zcxMP8C/Pz/Ix0c/zcxMP8C/Pz/Ix0c/zcxMP8C/Pz/Ix0c/zcxMP8C/Pz/Ix0c/zcxMP8C/Pz/Ix0c/zcxMP8C/Pz/Ix0c/zcxMP8C/Pz/Ix0c/zcxMP8C/Pz/Ix0c/zcxMP8C/Pz/Ix0c/zcxMP8C/Pz/Ix0c/zcxMP8C/Pz/Ix0c/zcxMP8C/Pz/Ix0c/zcxMP8C/Pz/Ix0c/zcxMP8C/Pz/Ix0c/zcxMP8C/Pz/Ix0c/zcxMP8C/Pz/Ix0c/zcxMP8C/Pz/Ix0c/zcxMP8C/Pz/Ix0c/zcxMP8C/Pz/Ix0c/zcxMP8C/Pz/Ix0c/zcxMP8C/Pz/Ix0c/zcxMP8C/Pz/Ix0c/zcxMP8C/Pz/Ix0c/zcxMP8C/Pz/Ix0c/zcxMP8C/Pz/Ix0c/zcxMP8C/Pz/Ix0c/zcxMP8C/Pz/Ix0c/zcxMP8C/Pz/Ix0c/zcxMP8C/Pz/Ix0c/zcxMP8C/Pz/Ix0c/zcxMP8C/Pz/Ix0c/zcxMP8C/Pz/Ix0c/zcxMP8C/Pz/Ix0c/zcxMP8C/Pz/Ix0c/zcxMP8C/Pz/Ix0c/zcxMP8C/Pz/Ix0c/zcxMP8C/Pz/Ix0c/zcxMP8C/Pz/Ix0c/zcxMP8C/Pz/Ix0c/zcxMP8C/Pz/Ix0c/zcxMP8C/Pz/Ix0c/zcxMP8C/Pz/Ix0c/zcxMP8C/Pz/Ix0c/zcxMP+rpaT/p6Og9tbQ0PurpaT/p6Og9tbQ0PurpaT/p6Og9tbQ0PurpaT/p6Og9tbQ0PurpaT/p6Og9tbQ0PurpaT/p6Og9tbQ0PsC/Pz/Ix0c/zcxMP8C/Pz/Ix0c/zcxMP8C/Pz/Ix0c/zcxMP8C/Pz/Ix0c/zcxMP8C/Pz/Ix0c/zcxMP8C/Pz/Ix0c/zcxMP8C/Pz/Ix0c/zcxMP8C/Pz/Ix0c/zcxMP8C/Pz/Ix0c/zcxMP8C/Pz/Ix0c/zcxMP8C/Pz/Ix0c/zcxMP8C/Pz/Ix0c/zcxMP8C/Pz/Ix0c/zcxMP8C/Pz/Ix0c/zcxMP8C/Pz/Ix0c/zcxMP8C/Pz/Ix0c/zcxMP8C/Pz/Ix0c/zcxMP8C/Pz/Ix0c/zcxMP8C/Pz/Ix0c/zcxMP8C/Pz/Ix0c/zcxMP8C/Pz/Ix0c/zcxMP8C/Pz/Ix0c/zcxMP8C/Pz/Ix0c/zcxMP8C/Pz/Ix0c/zcxMP8C/Pz/Ix0c/zcxMP8C/Pz/Ix0c/zcxMP8C/Pz/Ix0c/zcxMP8C/Pz/Ix0c/zcxMP8C/Pz/Ix0c/zcxMP8C/Pz/Ix0c/zcxMP+rpaT/p6Og9tbQ0PurpaT/p6Og9tbQ0PurpaT/p6Og9tbQ0PurpaT/p6Og9tbQ0PurpaT/p6Og9tbQ0PurpaT/p6Og9tbQ0PsC/Pz/Ix0c/zcxMP8C/Pz/Ix0c/zcxMP8C/Pz/Ix0c/zcxMP8C/Pz/Ix0c/zcxMP8C/Pz/Ix0c/zcxMP8C/Pz/Ix0c/zcxMP+rpaT/p6Og9tbQ0PurpaT/p6Og9tbQ0PurpaT/p6Og9tbQ0PurpaT/p6Og9tbQ0PurpaT/p6Og9tbQ0PurpaT/p6Og9tbQ0PurpaT/p6Og9tbQ0PurpaT/p6Og9tbQ0PurpaT/p6Og9tbQ0PsC/Pz/Ix0c/zcxMP8C/Pz/Ix0c/zcxMP8C/Pz/Ix0c/zcxMP8C/Pz/Ix0c/zcxMP8C/Pz/Ix0c/zcxMP8C/Pz/Ix0c/zcxMP+rpaT/p6Og9tbQ0PurpaT/p6Og9tbQ0PurpaT/p6Og9tbQ0PurpaT/p6Og9tbQ0PurpaT/p6Og9tbQ0PurpaT/p6Og9tbQ0PurpaT/p6Og9tbQ0PurpaT/p6Og9tbQ0PurpaT/p6Og9tbQ0PsC/Pz/Ix0c/zcxMP8C/Pz/Ix0c/zcxMP8C/Pz/Ix0c/zcxMPw==';
+
+let signMode     = 'glb';    // 'cube' | 'glb'
+let glbGroup     = null;     // THREE.Group del modelo GLB en escena
+let glbLogoMat   = null;     // material de las caras rojas (recibe logoTex)
+let glbLoaded    = false;    // si el GLB ya está parseado y listo
+
+window.setSignMode = mode => {
+  signMode = mode;
+  $('optCube').classList.toggle('on', mode==='cube');
+  $('optGlb').classList.toggle('on',  mode==='glb');
+  if(!signMesh) return;   // aún no hay cartel generado
+  if(mode==='cube') {
+    signMesh.visible = true;
+    if(glbGroup) { scene.remove(glbGroup); glbGroup=null; }
+    if(ctrl) ctrl.attach(signMesh);
+  } else {
+    signMesh.visible = false;
+    loadAndPlaceGLB();
+  }
+};
+
+/* Base64 → ArrayBuffer */
+function b64ToBuffer(b64) {
+  const bin = atob(b64);
+  const buf = new ArrayBuffer(bin.length);
+  const arr = new Uint8Array(buf);
+  for(let i=0;i<bin.length;i++) arr[i]=bin.charCodeAt(i);
+  return buf;
+}
+
+/* Construye dos geometrías a partir del GLB cargado:
+   - geoBody: triangulos grises
+   - geoLogo: triangulos rojos (caras del logo) */
+function splitGLBByVertexColor(gltf) {
+  // El GLB de Tinkercad tiene un solo mesh con COLOR_0
+  let srcGeo = null;
+  gltf.scene.traverse(n => { if(n.isMesh && !srcGeo) srcGeo = n.geometry; });
+  if(!srcGeo) return null;
+
+  const posAttr = srcGeo.attributes.position;
+  const colAttr = srcGeo.attributes.color;
+  const idxArr  = srcGeo.index ? srcGeo.index.array : null;
+
+  if(!colAttr) return { body: srcGeo, logo: null };
+
+  // Clasificar cada triángulo por el color mayoritario de sus 3 vértices
+  const numTris = idxArr ? idxArr.length/3 : posAttr.count/3;
+  const bodyPos=[], bodyIdx=[], logoPos=[], logoUV=[], logoIdx=[];
+  let bv=0, lv=0;
+
+  for(let t=0; t<numTris; t++) {
+    const i0 = idxArr ? idxArr[t*3]   : t*3;
+    const i1 = idxArr ? idxArr[t*3+1] : t*3+1;
+    const i2 = idxArr ? idxArr[t*3+2] : t*3+2;
+
+    // Comprobar si TODOS los vértices son rojos
+    const isRed = v => {
+      const r=colAttr.getX(v), g=colAttr.getY(v), b=colAttr.getZ(v);
+      return r > 0.6 && g < 0.35 && b < 0.35;
+    };
+    const red = isRed(i0) && isRed(i1) && isRed(i2);
+
+    const verts = [i0,i1,i2];
+    if(red) {
+      // Cara de logo: necesitamos UVs para el logo
+      // Calculamos UVs planas desde la bounding box de los vértices rojos
+      verts.forEach(vi => {
+        logoPos.push(posAttr.getX(vi), posAttr.getY(vi), posAttr.getZ(vi));
+        logoUV.push(0,0); // placeholder — se recalculan tras merge
+      });
+      logoIdx.push(lv, lv+1, lv+2); lv+=3;
+    } else {
+      verts.forEach(vi => {
+        bodyPos.push(posAttr.getX(vi), posAttr.getY(vi), posAttr.getZ(vi));
+      });
+      bodyIdx.push(bv, bv+1, bv+2); bv+=3;
+    }
+  }
+
+  // Calcular UVs planas para la geometría del logo
+  // Proyección sobre el plano XZ (cara frontal del cartel, que mira en Y)
+  const logoGeo = new THREE.BufferGeometry();
+  const lpa = new Float32Array(logoPos);
+  logoGeo.setAttribute('position', new THREE.BufferAttribute(lpa, 3));
+
+  // Bounding box de las caras rojas para normalizar UVs
+  logoGeo.computeBoundingBox();
+  const bb = logoGeo.boundingBox;
+  const sizeX = bb.max.x - bb.min.x || 1;
+  const sizeZ = bb.max.z - bb.min.z || 1;
+
+  const uvData = new Float32Array(logoPos.length/3 * 2);
+  for(let i=0; i<logoPos.length/3; i++) {
+    uvData[i*2]   = (logoPos[i*3]   - bb.min.x) / sizeX;  // U = X normalizado
+    uvData[i*2+1] = (logoPos[i*3+2] - bb.min.z) / sizeZ;  // V = Z normalizado
+  }
+  logoGeo.setAttribute('uv', new THREE.BufferAttribute(uvData, 2));
+  logoGeo.setIndex(logoIdx);
+  logoGeo.computeVertexNormals();
+
+  const bodyGeo = new THREE.BufferGeometry();
+  bodyGeo.setAttribute('position', new THREE.Float32BufferAttribute(bodyPos, 3));
+  bodyGeo.setIndex(bodyIdx);
+  bodyGeo.computeVertexNormals();
+
+  return { body: bodyGeo, logo: logoGeo };
+}
+
+/* Carga el GLB, divide geometría, escala al cartel y añade a escena */
+function loadAndPlaceGLB() {
+  if(glbGroup) { scene.remove(glbGroup); glbGroup=null; }
+  if(!signMesh) return;
+
+  $('modelStatus').textContent = '⏳ Cargando modelo...';
+
+  const buf = b64ToBuffer(SIGN_GLB_B64);
+  const loader = new GLTFLoader();
+
+  loader.parse(buf, '', gltf => {
+    const split = splitGLBByVertexColor(gltf);
+    if(!split) { $('modelStatus').textContent = 'Error: no se pudo parsear el GLB'; return; }
+
+    /* ── Materiales ── */
+    const bodyMat = new THREE.MeshStandardMaterial({
+      color: 0x444444,   // gris aluminio
+      roughness: 0.3,
+      metalness: 0.85,
+    });
+    glbLogoMat = new THREE.MeshStandardMaterial({
+      color: 0xffffff,
+      roughness: 0.15,
+      metalness: 0.0,
+      map: logoTex || null,
+    });
+
+    const group = new THREE.Group();
+
+    const bodyMesh = new THREE.Mesh(split.body, bodyMat);
+    bodyMesh.castShadow = true;
+    group.add(bodyMesh);
+
+    if(split.logo) {
+      const logoMesh = new THREE.Mesh(split.logo, glbLogoMat);
+      logoMesh.castShadow = true;
+      group.add(logoMesh);
+    }
+
+    /* ── Alinear al cartel ──
+       El GLB de Tinkercad tiene la maqueta con:
+         X: ancho (-0.053 a +0.036)  = 89mm
+         Y: alto  ( 0.018 a +0.030)  = 12mm  (el canto)
+         Z: prof  (    0  a +0.08 )  = 80mm  (la profundidad/longitud)
+       
+       El cartel en escena (signMesh) está orientado con:
+         su cara frontal mirando hacia la cámara (en +outNorm)
+         su ancho en X, alto en Y
+       
+       Para alinear: rotamos el GLB 90° en X para que Z pase a ser Y
+       (el "largo" del cartel de letras se convierte en el ancho en escena)
+    */
+
+    // Bounding box del grupo raw
+    const boxRaw = new THREE.Box3().setFromObject(group);
+    const sizeRaw = new THREE.Vector3(); boxRaw.getSize(sizeRaw);
+    const ctrRaw  = new THREE.Vector3(); boxRaw.getCenter(ctrRaw);
+
+    // Centrar en origen
+    group.position.sub(ctrRaw);
+
+    // Rotar 90° en X: Z→Y, Y→-Z  (el letrero queda "de pie")
+    group.rotateX(-Math.PI / 2);
+
+    // Ahora medir de nuevo tras rotación
+    group.updateMatrixWorld(true);
+    const boxRot = new THREE.Box3().setFromObject(group);
+    const sizeRot = new THREE.Vector3(); boxRot.getSize(sizeRot);
+
+    // Escala uniforme para que el modelo ocupe el mismo ancho que el signMesh
+    const signBox = new THREE.Box3().setFromObject(signMesh);
+    const signSize = new THREE.Vector3(); signBox.getSize(signSize);
+
+    const scaleX = signSize.x / (sizeRot.x || 1);
+    const scaleY = signSize.y / (sizeRot.y || 1);
+    const sc = Math.min(scaleX, scaleY) * 0.95;  // 5% de margen
+    group.scale.setScalar(sc);
+
+    // Posicionar en el centro del signMesh
+    const signCtr = new THREE.Vector3(); signBox.getCenter(signCtr);
+    group.position.copy(signCtr);
+
+    // Copiar orientación del cartel perspectivo
+    group.quaternion.copy(signMesh.quaternion);
+
+    scene.add(group);
+    glbGroup = group;
+    glbLoaded = true;
+
+    // Reatach gizmo al grupo del modelo
+    if(ctrl) { ctrl.detach(); ctrl.attach(group); }
+
+    $('modelStatus').textContent = '✓ Cartel 3D cargado';
+    $('modelStatus').style.color = '#00e5ffaa';
+
+  }, err => {
+    console.error('GLB parse error:', err);
+    $('modelStatus').textContent = 'Error cargando GLB';
+  });
+}
+
+/* Cuando se sube logo, actualizar también las caras rojas del GLB */
+const _origLogoUpdate = (() => {
+  const prev = on;
+  return () => {
+    if(glbLogoMat && logoTex) {
+      glbLogoMat.map = logoTex;
+      glbLogoMat.needsUpdate = true;
+    }
+  };
+})();
+
+// Hook: después de que logoTex se actualice, refrescar el GLB
+function refreshModelLogo() {
+  if(glbLogoMat && logoTex) {
+    glbLogoMat.map = logoTex;
+    glbLogoMat.needsUpdate = true;
+  }
+}
+
+/* Cuando se regenera el cartel, reubicar el GLB si está activo */
+function maybeReplaceWithModel() {
+  if(signMode === 'glb' && signMesh) {
+    signMesh.visible = false;
+    loadAndPlaceGLB();
+  }
+}
+
+</script>
+</body>
+</html>
